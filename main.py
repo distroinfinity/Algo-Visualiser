@@ -1,11 +1,17 @@
 import pygame
+from pygame_widgets import TextBox, Slider
 import math
 from queue import PriorityQueue
 import time
 
+pygame.init()
 WIDTH = 800
-WIN = pygame.display.set_mode((WIDTH, WIDTH))
+WIN = pygame.display.set_mode((WIDTH, 900))
 pygame.display.set_caption("A* Path Finding Algorithm")
+
+
+slider_speed = Slider(WIN, 50, 820, 350, 20, min=0, max=1, step=0.05,initial=0)
+output_slider = TextBox(WIN, 50, 860, 350, 20, fontSize=15)
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -113,16 +119,20 @@ def reconstruct_path(came_from, current, draw):
         draw()
     """
 
-def draw(win, grid, rows, width):
+
+def draw(win, grid, rows, width, slider_speed, output_slider):
     win.fill(WHITE)
     for row in grid:
         for spot in row:
             spot.draw(win)
     draw_grid(win, rows, width)
+    #output_slider.setText(str(slider_speed.getValue()))
+    slider_speed.draw()
+    output_slider.draw()
     pygame.display.update()
 
 
-def algorithm(draw, grid, start, end):
+def algorithm(draw, grid, start, end,time_):
     count = 0
     open_set = PriorityQueue()
     open_set.put((0, count, start))
@@ -135,11 +145,10 @@ def algorithm(draw, grid, start, end):
     open_set_hash = {start}
 
     while not open_set.empty():
-        #time.sleep(.5)
+        time.sleep(time_)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-
         current = open_set.get()[2]
         open_set_hash.remove(current)
 
@@ -161,10 +170,8 @@ def algorithm(draw, grid, start, end):
                     open_set.put((f_score[neighbor], count, neighbor))
                     open_set_hash.add(neighbor)
                     neighbor.make_open()
-               
-        # time.sleep(.5)
+
         draw()
-        # time.sleep(.5)
 
         if current != start:
             current.make_closed()
@@ -190,6 +197,7 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, GREY, (0, i*gap), (width, i*gap))
         for j in range(rows):
             pygame.draw.line(win, GREY, (i*gap, 0), (i*gap, width))
+    pygame.draw.line(win, GREY, (0, width), (width, width))
 
 
 def get_clicked_pos(pos, rows, width):
@@ -207,8 +215,11 @@ def main(win, width):
     end = None
     run = True
     started = False
+    time_ = 0
+    output_slider.setText("Adjust Algorithm Progressing Speed")
+    output_slider.draw()
     while run:
-        draw(win, grid, ROWS, width)
+        draw(win, grid, ROWS, width, slider_speed, output_slider)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -218,18 +229,19 @@ def main(win, width):
 
             if pygame.mouse.get_pressed()[0]:  # left mouse key index 0
                 pos = pygame.mouse.get_pos()
-                row, col = get_clicked_pos(pos, ROWS, width)
-                spot = grid[row][col]
-                if not start and spot != end:
-                    start = spot
-                    spot.make_start()
+                if pos[0] <= 800 and pos[1] <= 800:
+                    row, col = get_clicked_pos(pos, ROWS, width)
+                    spot = grid[row][col]
+                    if not start and spot != end:
+                        start = spot
+                        spot.make_start()
 
-                elif not end and spot != start:
-                    end = spot
-                    spot.make_end()
+                    elif not end and spot != start:
+                        end = spot
+                        spot.make_end()
 
-                elif spot != end and spot != start:
-                    spot.make_barrier()
+                    elif spot != end and spot != start:
+                        spot.make_barrier()
 
             elif pygame.mouse.get_pressed()[2]:  # left mouse key index 2
                 pos = pygame.mouse.get_pos()
@@ -246,13 +258,18 @@ def main(win, width):
                     for row in grid:
                         for spot in row:
                             spot.update_neighbors(grid)
-                    algorithm(lambda: draw(win, grid, ROWS, width),
-                              grid, start, end)
+                    algorithm(lambda: draw(win, grid, ROWS, width,slider_speed,output_slider),
+                              grid, start, end,time_)
 
                 if event.key == pygame.K_c:
                     start = None
                     end = None
                     grid = make_grid(ROWS, width)
+        
+        slider_speed.listen(pygame.event.get())
+        slider_speed.draw()
+        time_ = 1.0-slider_speed.getValue()
+        pygame.display.update()
     pygame.quit()
 
 
